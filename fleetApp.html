@@ -1,0 +1,1717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Equipment & Fleet Management System</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <!-- Google Fonts: Inter -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    @keyframes pulse-dot {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.25); opacity: 0.7; }
+    }
+    .online-dot { animation: pulse-dot 2s infinite; }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
+
+  <!-- TOAST NOTIFICATION CONTAINER -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none"></div>
+
+  <!-- ========================================== -->
+  <!-- 1. SECURE LOGIN SCREEN                     -->
+  <!-- ========================================== -->
+  <div id="loginScreen" class="fixed inset-0 z-40 bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-200/20">
+      <div class="bg-gradient-to-r from-blue-700 to-indigo-800 p-6 text-white text-center relative">
+        <div class="w-16 h-16 bg-white/15 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-inner border border-white/20">
+          <i class="fa-solid fa-screwdriver-wrench text-3xl text-white"></i>
+        </div>
+        <h1 class="text-2xl font-bold tracking-tight">Fleet & Tool Guard</h1>
+        <p class="text-blue-200 text-xs mt-1 uppercase tracking-widest font-medium">Enterprise Equipment Management</p>
+      </div>
+
+      <form id="loginForm" class="p-6 sm:p-8 space-y-5">
+        <div id="loginError" class="hidden bg-red-50 border-l-4 border-red-500 text-red-700 p-3 rounded text-sm flex items-center gap-2">
+          <i class="fa-solid fa-circle-exclamation"></i>
+          <span id="loginErrorText">Invalid username or password. Access restricted to authorized users.</span>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-2">Username</label>
+          <div class="relative">
+            <i class="fa-solid fa-user absolute left-3.5 top-3.5 text-slate-400"></i>
+            <input type="text" id="loginUsername" required autocomplete="username" placeholder="Enter your username"
+              class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition text-sm" />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-2">Password</label>
+          <div class="relative">
+            <i class="fa-solid fa-lock absolute left-3.5 top-3.5 text-slate-400"></i>
+            <input type="password" id="loginPassword" required autocomplete="current-password" placeholder="Enter your password"
+              class="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition text-sm" />
+            <button type="button" onclick="togglePasswordVisibility('loginPassword', 'loginPassIcon')" class="absolute right-3.5 top-3 text-slate-400 hover:text-slate-600">
+              <i id="loginPassIcon" class="fa-solid fa-eye text-sm"></i>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" class="w-full bg-blue-700 hover:bg-blue-800 active:bg-blue-900 text-white font-semibold py-3 rounded-xl shadow-lg shadow-blue-700/25 transition flex items-center justify-center gap-2">
+          <i class="fa-solid fa-right-to-bracket"></i>
+          <span>Sign In to Portal</span>
+        </button>
+
+        <div class="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+          <span class="inline-flex items-center gap-1.5">
+            <span id="loginCloudDot" class="w-2 h-2 rounded-full bg-emerald-500 online-dot"></span>
+            <span id="loginSyncText">Connecting to Cloud...</span>
+          </span>
+          <button type="button" onclick="openModal('helpCornerModal')" class="text-blue-600 hover:underline font-medium">
+            <i class="fa-solid fa-headset mr-1"></i>Admin Help
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 2. MAIN APPLICATION SHELL                  -->
+  <!-- ========================================== -->
+  <div id="appShell" class="hidden flex-1 flex flex-col">
+
+    <!-- TOP NAVIGATION BAR (Clean - No M365 Toggle) -->
+    <header class="bg-slate-900 text-white shadow-md sticky top-0 z-30 border-b border-slate-800">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
+        <!-- Brand Logo -->
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow">
+            <i class="fa-solid fa-screwdriver-wrench text-lg"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-base sm:text-lg tracking-tight">Fleet & Tool Guard</span>
+            </div>
+            <p class="text-[11px] text-slate-400 hidden sm:block">Real-Time Equipment Management & 15-Day Auto-Cleanup</p>
+          </div>
+        </div>
+
+        <!-- Right Controls: Online Badge, Admin Help, Profile Switcher -->
+        <div class="flex items-center gap-2 sm:gap-3">
+          <!-- Online Active Users Pill -->
+          <button onclick="switchTab('usersTab')" title="View Online Team Members" class="hidden md:flex items-center gap-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 px-3 py-1.5 rounded-full text-xs transition">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 online-dot"></span>
+            <span class="text-slate-300 font-medium"><span id="headerOnlineCount">1</span> Online</span>
+          </button>
+
+          <!-- Admin Help Corner Button -->
+          <button onclick="openModal('helpCornerModal')" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 px-3 py-1.5 rounded-xl text-xs font-medium transition flex items-center gap-1.5">
+            <i class="fa-solid fa-circle-question text-blue-400"></i>
+            <span class="hidden sm:inline">Admin Help</span>
+          </button>
+
+          <!-- Profile Switcher Dropdown (Clean - No M365 Toggle) -->
+          <div class="relative" id="profileDropdownContainer">
+            <button onclick="toggleProfileDropdown()" class="flex items-center gap-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 pl-2.5 pr-3 py-1.5 rounded-xl transition">
+              <div class="relative">
+                <div id="headerUserAvatar" class="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center font-bold text-xs uppercase">V</div>
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-slate-900 absolute -bottom-0.5 -right-0.5"></span>
+              </div>
+              <div class="text-left hidden sm:block">
+                <div id="headerUserName" class="text-xs font-semibold leading-none">Vikas</div>
+                <div id="headerUserRole" class="text-[10px] text-blue-400 font-medium mt-0.5">Admin</div>
+              </div>
+              <i class="fa-solid fa-chevron-down text-[10px] text-slate-400"></i>
+            </button>
+
+            <!-- Dropdown Menu -->
+            <div id="profileDropdownMenu" class="hidden absolute right-0 mt-2 w-64 bg-white text-slate-800 rounded-2xl shadow-xl border border-slate-200 py-2 z-50">
+              <div class="px-4 py-2.5 border-b border-slate-100">
+                <div class="flex items-center justify-between">
+                  <p id="dropdownFullUser" class="text-sm font-bold text-slate-800">Vikas</p>
+                  <span class="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Active Online
+                  </span>
+                </div>
+                <p id="dropdownUserRole" class="text-xs text-slate-500 mt-0.5">Role: Administrator</p>
+              </div>
+
+              <!-- Quick Profile Switcher Section -->
+              <div class="px-3 py-2 border-b border-slate-100">
+                <p class="text-[10px] font-semibold uppercase tracking-wider text-slate-400 px-1 mb-1">Quick Profile Switcher</p>
+                <div id="quickSwitchList" class="max-h-32 overflow-y-auto custom-scrollbar space-y-1"></div>
+              </div>
+
+              <button onclick="openPasswordModal()" class="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-2.5">
+                <i class="fa-solid fa-key text-amber-500 w-4"></i> Change Password
+              </button>
+              <button onclick="exportExcelCSV(); closeProfileDropdown();" class="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-2.5">
+                <i class="fa-solid fa-file-excel text-emerald-600 w-4"></i> Export Fleet to CSV
+              </button>
+              <button onclick="openModal('helpCornerModal'); closeProfileDropdown();" class="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-2.5">
+                <i class="fa-solid fa-life-ring text-indigo-500 w-4"></i> Admin Help Corner
+              </button>
+
+              <div class="border-t border-slate-100 mt-1 pt-1">
+                <button onclick="handleLogout()" class="w-full text-left px-4 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 flex items-center gap-2.5">
+                  <i class="fa-solid fa-power-off w-4"></i> Sign Out
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- SUMMARY KPI BAR (REAL-TIME DATA VISUALIZATION) -->
+    <section class="bg-white border-b border-slate-200 shadow-sm">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 space-y-3">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+          <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center text-lg shrink-0">
+              <i class="fa-solid fa-toolbox"></i>
+            </div>
+            <div>
+              <p class="text-xs text-slate-500 font-medium">Total Fleet</p>
+              <p id="kpiTotalTools" class="text-xl font-bold text-slate-800">55</p>
+            </div>
+          </div>
+
+          <div class="bg-emerald-50/60 border border-emerald-200/80 rounded-xl p-3.5 flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-lg shrink-0">
+              <i class="fa-solid fa-circle-check"></i>
+            </div>
+            <div>
+              <p class="text-xs text-emerald-700 font-medium">Available (OK)</p>
+              <p id="kpiAvailableTools" class="text-xl font-bold text-emerald-800">45</p>
+            </div>
+          </div>
+
+          <div class="bg-amber-50/60 border border-amber-200/80 rounded-xl p-3.5 flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center text-lg shrink-0">
+              <i class="fa-solid fa-hand-holding-hand"></i>
+            </div>
+            <div>
+              <p class="text-xs text-amber-700 font-medium">Currently In-Use</p>
+              <p id="kpiInUseTools" class="text-xl font-bold text-amber-800">0</p>
+            </div>
+          </div>
+
+          <div class="bg-red-50/60 border border-red-200/80 rounded-xl p-3.5 flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-red-100 text-red-700 flex items-center justify-center text-lg shrink-0">
+              <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <div>
+              <p class="text-xs text-red-700 font-medium">Not OK / Maint.</p>
+              <p id="kpiDamagedTools" class="text-xl font-bold text-red-800">10</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live Fleet Health Distribution Bar -->
+        <div class="bg-slate-50 border border-slate-200/70 rounded-xl px-4 py-2.5">
+          <div class="flex items-center justify-between text-[11px] font-semibold text-slate-600 mb-1.5">
+            <span>Real-Time Fleet Utilization & Health Visualization</span>
+            <span id="healthPercentLabel" class="text-emerald-700">82% Operational</span>
+          </div>
+          <div class="w-full h-2.5 bg-slate-200 rounded-full overflow-hidden flex">
+            <div id="barAvailable" class="bg-emerald-500 h-full transition-all duration-500" style="width: 81.8%"></div>
+            <div id="barInUse" class="bg-amber-500 h-full transition-all duration-500" style="width: 0%"></div>
+            <div id="barDamaged" class="bg-red-500 h-full transition-all duration-500" style="width: 18.2%"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- NAVIGATION TABS -->
+    <div class="bg-white border-b border-slate-200 sticky top-16 z-20">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <nav class="flex space-x-1 sm:space-x-4 overflow-x-auto custom-scrollbar py-2">
+          <button onclick="switchTab('fleetTab')" id="tabBtn-fleetTab" class="tab-btn px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition flex items-center gap-2 bg-blue-600 text-white shadow-sm">
+            <i class="fa-solid fa-layer-group"></i>
+            <span>Fleet Management</span>
+          </button>
+          <button onclick="switchTab('issueReturnTab')" id="tabBtn-issueReturnTab" class="tab-btn px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition flex items-center gap-2 text-slate-600 hover:bg-slate-100">
+            <i class="fa-solid fa-right-left"></i>
+            <span>Issue & Return</span>
+            <span id="activeIssueCounterBadge" class="ml-1 px-1.5 py-0.2 text-[10px] rounded-full bg-amber-100 text-amber-800 font-bold">0</span>
+          </button>
+          <button onclick="switchTab('usersTab')" id="tabBtn-usersTab" class="tab-btn px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition flex items-center gap-2 text-slate-600 hover:bg-slate-100">
+            <i class="fa-solid fa-users-gear"></i>
+            <span>Users & Access Control</span>
+          </button>
+          <button onclick="switchTab('auditTab')" id="tabBtn-auditTab" class="tab-btn px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition flex items-center gap-2 text-slate-600 hover:bg-slate-100">
+            <i class="fa-solid fa-shield-halved"></i>
+            <span>Audit Logs & 15-Day Cleanup</span>
+          </button>
+        </nav>
+      </div>
+    </div>
+
+    <!-- MAIN WORKSPACE -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+      <!-- TAB 1: FLEET MANAGEMENT -->
+      <div id="fleetTab" class="tab-pane space-y-5">
+        <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+          <div class="flex flex-1 flex-col sm:flex-row gap-3">
+            <div class="relative flex-1">
+              <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-sm"></i>
+              <input type="text" id="fleetSearchInput" oninput="renderFleetTable()" placeholder="Search by serial (A-01, E-07), tool name, or borrower..."
+                class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white" />
+            </div>
+
+            <select id="fleetCategoryFilter" onchange="renderFleetTable()" class="px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600">
+              <option value="ALL">All Categories (9)</option>
+              <option value="Sanding Machine">Sanding Machine (19)</option>
+              <option value="Electric Grinder">Electric Grinder (7)</option>
+              <option value="Air Grinder">Air Grinder (6)</option>
+              <option value="Hoter Gun / Heater Gun">Hoter Gun / Heater Gun (2)</option>
+              <option value="Oxygen Machine">Oxygen Machine (5)</option>
+              <option value="B.Light / Inspection Light">B.Light / Inspection Light (4)</option>
+              <option value="Extension Cable">Extension Cable (8)</option>
+              <option value="Sizer / Cutter">Sizer / Cutter (3)</option>
+              <option value="LED Light">LED Light (1)</option>
+            </select>
+
+            <select id="fleetStatusFilter" onchange="renderFleetTable()" class="px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600">
+              <option value="ALL">All Statuses</option>
+              <option value="Available">Available</option>
+              <option value="In-Use">In-Use</option>
+              <option value="Not OK">Not OK / Maintenance</option>
+            </select>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button onclick="exportExcelCSV()" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs sm:text-sm font-semibold px-3.5 py-2.5 rounded-xl transition flex items-center gap-1.5">
+              <i class="fa-solid fa-file-excel"></i>
+              <span>Export CSV</span>
+            </button>
+            <div id="adminFleetControls">
+              <button onclick="openModal('addToolModal')" class="bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-semibold px-4 py-2.5 rounded-xl shadow-sm transition flex items-center gap-2">
+                <i class="fa-solid fa-plus"></i>
+                <span>Add Equipment</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div id="categorySummaryGrid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5"></div>
+
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+          <div class="px-5 py-3.5 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
+            <h2 class="font-bold text-sm sm:text-base text-slate-800 flex items-center gap-2">
+              <i class="fa-solid fa-list-check text-blue-600"></i>
+              <span>Equipment Inventory Register</span>
+              <span id="fleetShowingCount" class="text-xs font-normal text-slate-500">(Showing 55 items)</span>
+            </h2>
+            <span class="text-[11px] text-slate-500 hidden sm:inline">
+              <i class="fa-solid fa-toggle-on text-red-500 mr-1"></i>Toggle "Damaged / Not OK" directly to flag maintenance
+            </span>
+          </div>
+
+          <div class="overflow-x-auto custom-scrollbar">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-slate-50 text-slate-500 text-[11px] font-bold uppercase tracking-wider border-b border-slate-200">
+                  <th class="py-3 px-4">Serial No.</th>
+                  <th class="py-3 px-4">Equipment Category</th>
+                  <th class="py-3 px-4">Current Status</th>
+                  <th class="py-3 px-4">Custody / Remarks</th>
+                  <th class="py-3 px-4 text-center">Damaged / Not OK Toggle</th>
+                  <th class="py-3 px-4 text-right">Quick Actions</th>
+                </tr>
+              </thead>
+              <tbody id="fleetTableBody" class="divide-y divide-slate-100 text-sm"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 2: ISSUE & RETURN -->
+      <div id="issueReturnTab" class="tab-pane hidden space-y-6">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div class="lg:col-span-5 bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-6 h-fit">
+            <div class="flex items-center gap-3 pb-4 mb-5 border-b border-slate-100">
+              <div class="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center">
+                <i class="fa-solid fa-hand-holding-medical text-lg"></i>
+              </div>
+              <div>
+                <h2 class="font-bold text-base text-slate-800">Issue Equipment</h2>
+                <p class="text-xs text-slate-500">Assign available tools to field operators</p>
+              </div>
+            </div>
+
+            <form id="issueToolForm" class="space-y-4">
+              <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                  Select Available Tool <span class="text-red-500">*</span>
+                </label>
+                <select id="issueToolSelect" required class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white">
+                  <option value="">-- Choose an Available Tool --</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                  Kon Diya (Issued By) <span class="text-xs font-normal text-emerald-600 ml-1"><i class="fa-solid fa-wand-magic-sparkles"></i> Auto-Filled</span>
+                </label>
+                <div class="relative">
+                  <i class="fa-solid fa-user-check absolute left-3.5 top-3 text-emerald-600 text-sm"></i>
+                  <input type="text" id="issueKonDiya" readonly
+                    class="w-full pl-9 pr-4 py-2.5 bg-emerald-50/60 border border-emerald-200 rounded-xl text-sm font-semibold text-emerald-900 cursor-not-allowed" />
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                  Kon Liya (Borrower Name) <span class="text-red-500">*</span>
+                </label>
+                <div class="relative">
+                  <i class="fa-solid fa-user-tag absolute left-3.5 top-3 text-slate-400 text-sm"></i>
+                  <input type="text" id="issueKonLiya" list="borrowerHistoryList" required placeholder="Type name or select from history..."
+                    class="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white" />
+                  <datalist id="borrowerHistoryList"></datalist>
+                </div>
+                <div id="borrowerQuickChips" class="flex flex-wrap gap-1.5 mt-2"></div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                  Work Area / Remarks (Optional)
+                </label>
+                <input type="text" id="issueRemarks" placeholder="e.g., Bay 3 Blade Finishing, Shift A..."
+                  class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white" />
+              </div>
+
+              <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl shadow-md shadow-blue-600/20 transition flex items-center justify-center gap-2">
+                <i class="fa-solid fa-paper-plane"></i>
+                <span>Issue Selected Tool</span>
+              </button>
+            </form>
+          </div>
+
+          <div class="lg:col-span-7 space-y-6">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+              <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between bg-amber-50/40">
+                <div class="flex items-center gap-2.5">
+                  <span class="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                  </span>
+                  <div>
+                    <h3 class="font-bold text-sm sm:text-base text-slate-800">Currently Issued Tools (In-Use)</h3>
+                    <p class="text-[11px] text-slate-500">Click "Return OK" when handed back to store</p>
+                  </div>
+                </div>
+                <span id="inUseBadgeCount" class="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800">0 Active</span>
+              </div>
+
+              <div class="overflow-x-auto custom-scrollbar">
+                <table class="w-full text-left border-collapse">
+                  <thead>
+                    <tr class="bg-slate-50 text-slate-500 text-[11px] font-bold uppercase tracking-wider border-b border-slate-200">
+                      <th class="py-3 px-4">Tool & Serial</th>
+                      <th class="py-3 px-4">Kon Liya (Borrower)</th>
+                      <th class="py-3 px-4">Kon Diya (Issuer)</th>
+                      <th class="py-3 px-4">Issued At</th>
+                      <th class="py-3 px-4 text-right">Return Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="activeIssuesTableBody" class="divide-y divide-slate-100 text-sm"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+              <div class="px-5 py-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 bg-slate-50/60">
+                <div>
+                  <h3 class="font-bold text-sm sm:text-base text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-boxes-packing text-emerald-600"></i>
+                    <span>Returned Transaction History</span>
+                  </h3>
+                  <p class="text-[11px] text-slate-500">Auto-purges returned records older than 15 days</p>
+                </div>
+                <span class="text-[11px] px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 font-medium border border-blue-200">
+                  <i class="fa-solid fa-broom mr-1"></i>15-Day Retention Policy Active
+                </span>
+              </div>
+
+              <div class="overflow-x-auto custom-scrollbar max-h-80">
+                <table class="w-full text-left border-collapse">
+                  <thead>
+                    <tr class="bg-slate-50 text-slate-500 text-[11px] font-bold uppercase tracking-wider border-b border-slate-200">
+                      <th class="py-2.5 px-4">Serial & Tool</th>
+                      <th class="py-2.5 px-4">Kon Liya</th>
+                      <th class="py-2.5 px-4">Kon Diya</th>
+                      <th class="py-2.5 px-4">Returned On</th>
+                      <th class="py-2.5 px-4">Auto-Purge In</th>
+                    </tr>
+                  </thead>
+                  <tbody id="returnedHistoryTableBody" class="divide-y divide-slate-100 text-xs sm:text-sm"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 3: USERS & ACCESS CONTROL -->
+      <div id="usersTab" class="tab-pane hidden space-y-6">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div class="lg:col-span-4 bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-6 h-fit">
+            <div class="flex items-center gap-3 pb-4 mb-4 border-b border-slate-100">
+              <div class="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center">
+                <i class="fa-solid fa-user-plus text-lg"></i>
+              </div>
+              <div>
+                <h2 class="font-bold text-base text-slate-800">Authorize New User</h2>
+                <p class="text-xs text-slate-500">Only users you add here can log in via the link</p>
+              </div>
+            </div>
+
+            <form id="addUserForm" class="space-y-4">
+              <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Username <span class="text-red-500">*</span></label>
+                <input type="text" id="newUsername" required placeholder="e.g., Rahul_Store"
+                  class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-600" />
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Initial Password <span class="text-red-500">*</span></label>
+                <input type="text" id="newUserPassword" required placeholder="Assign secret password"
+                  class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-600" />
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Access Role <span class="text-red-500">*</span></label>
+                <select id="newUserRole" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-600">
+                  <option value="User">Standard User (View, Issue & Return)</option>
+                  <option value="Admin">Administrator (Full Fleet & User Control)</option>
+                </select>
+              </div>
+
+              <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-xl shadow-sm transition flex items-center justify-center gap-2">
+                <i class="fa-solid fa-user-check"></i>
+                <span>Grant User Access</span>
+              </button>
+            </form>
+
+            <div id="nonAdminUserNotice" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-4 text-center space-y-2">
+              <i class="fa-solid fa-lock text-2xl text-slate-400"></i>
+              <p class="text-sm font-semibold text-slate-700">Administrator Restricted</p>
+              <p class="text-xs text-slate-500">Your account has Standard User privileges. Only Administrators can authorize, delete, or modify user roles and passwords.</p>
+            </div>
+          </div>
+
+          <div class="lg:col-span-8 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
+              <div>
+                <h3 class="font-bold text-base text-slate-800 flex items-center gap-2">
+                  <i class="fa-solid fa-users text-indigo-600"></i>
+                  <span>Authorized Users & Live Online Status</span>
+                </h3>
+                <p class="text-xs text-slate-500">Anyone not in this list is strictly blocked at the login screen</p>
+              </div>
+              <span id="totalUsersCountBadge" class="px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">1 User</span>
+            </div>
+
+            <div class="overflow-x-auto custom-scrollbar">
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="bg-slate-50 text-slate-500 text-[11px] font-bold uppercase tracking-wider border-b border-slate-200">
+                    <th class="py-3 px-4">User</th>
+                    <th class="py-3 px-4">Role</th>
+                    <th class="py-3 px-4">Live Status</th>
+                    <th class="py-3 px-4">Last Activity</th>
+                    <th class="py-3 px-4 text-right">Admin Controls</th>
+                  </tr>
+                </thead>
+                <tbody id="usersTableBody" class="divide-y divide-slate-100 text-sm"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 4: AUDIT LOGS & 15-DAY AUTO-CLEANUP -->
+      <div id="auditTab" class="tab-pane hidden space-y-5">
+        <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl p-5 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div class="flex items-start sm:items-center gap-3.5">
+            <div class="w-12 h-12 rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center text-emerald-400 text-xl shrink-0">
+              <i class="fa-solid fa-broom-ball"></i>
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <h2 class="font-bold text-base sm:text-lg">15-Day Automated Database Cleanup Engine</h2>
+                <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 font-semibold">ACTIVE</span>
+              </div>
+              <p class="text-xs text-slate-300 mt-1">
+                Returned tool transaction logs older than <strong>15 days</strong> are automatically purged from cloud storage to maintain peak performance. Tamper-proof security audit trails are preserved.
+              </p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            <button onclick="run15DayCleanup(true)" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition flex items-center gap-2 shadow">
+              <i class="fa-solid fa-rotate"></i>
+              <span>Verify & Run Cleanup Now</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div class="relative w-full sm:w-96">
+            <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-sm"></i>
+            <input type="text" id="auditSearchInput" oninput="renderAuditLogs()" placeholder="Filter logs by user, action, or serial number..."
+              class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600" />
+          </div>
+
+          <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+            <select id="auditTypeFilter" onchange="renderAuditLogs()" class="px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600">
+              <option value="ALL">All Event Types</option>
+              <option value="ISSUE">Tool Issued</option>
+              <option value="RETURN">Tool Returned</option>
+              <option value="STATUS">Status / Damage Toggle</option>
+              <option value="FLEET">Fleet Add / Remove</option>
+              <option value="USER">User / Role / Auth</option>
+              <option value="CLEANUP">15-Day Auto-Cleanup</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+          <div class="px-5 py-3.5 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
+            <h3 class="font-bold text-sm sm:text-base text-slate-800 flex items-center gap-2">
+              <i class="fa-solid fa-fingerprint text-blue-600"></i>
+              <span>Tamper-Proof Activity Audit Log</span>
+            </h3>
+            <span id="auditCountBadge" class="text-xs font-semibold text-slate-500">0 Events Logged</span>
+          </div>
+
+          <div class="overflow-x-auto custom-scrollbar max-h-[520px]">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-slate-50 text-slate-500 text-[11px] font-bold uppercase tracking-wider border-b border-slate-200 sticky top-0">
+                  <th class="py-3 px-4">Timestamp</th>
+                  <th class="py-3 px-4">Event Type</th>
+                  <th class="py-3 px-4">Actor (Username)</th>
+                  <th class="py-3 px-4">Target / Serial</th>
+                  <th class="py-3 px-4">Detailed Audit Record</th>
+                </tr>
+              </thead>
+              <tbody id="auditTableBody" class="divide-y divide-slate-100 text-xs sm:text-sm"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="bg-white border-t border-slate-200 py-3 px-4 text-center text-xs text-slate-500">
+      <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+        <span><i class="fa-solid fa-shield-halved text-blue-600 mr-1"></i> Equipment & Fleet Management System • Cloud Firestore Connected (`wtg-fleet-guard`)</span>
+        <span>Last Cloud Sync: <strong id="footerLastSync">Connecting...</strong></span>
+      </div>
+    </footer>
+  </div>
+
+  <!-- MODAL 1: CHANGE PASSWORD -->
+  <div id="passwordModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200">
+      <div class="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
+        <h3 class="font-bold text-base flex items-center gap-2">
+          <i class="fa-solid fa-key text-amber-400"></i> Change Account Password
+        </h3>
+        <button onclick="closeModal('passwordModal')" class="text-slate-400 hover:text-white">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+      <form id="changePasswordForm" class="p-6 space-y-4">
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Current Password</label>
+          <input type="password" id="currentPasswordInput" required
+            class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600" />
+        </div>
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-600 mb-1">New Password</label>
+          <input type="password" id="newPasswordInput" required minlength="3"
+            class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600" />
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" onclick="closeModal('passwordModal')" class="px-4 py-2 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100">Cancel</button>
+          <button type="submit" class="px-5 py-2 rounded-xl text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white">Update Password</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 2: ADMIN HELP CORNER -->
+  <div id="helpCornerModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200">
+      <div class="px-6 py-4 bg-gradient-to-r from-blue-700 to-indigo-800 text-white flex items-center justify-between">
+        <h3 class="font-bold text-base flex items-center gap-2">
+          <i class="fa-solid fa-headset"></i> Admin Help Corner & Support
+        </h3>
+        <button onclick="closeModal('helpCornerModal')" class="text-white/70 hover:text-white">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+      <div class="p-6 space-y-4 text-sm text-slate-600">
+        <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
+          <i class="fa-solid fa-user-shield text-blue-700 text-xl mt-0.5"></i>
+          <div>
+            <h4 class="font-bold text-slate-800">Primary System Administrator</h4>
+            <p class="text-xs text-slate-600 mt-0.5">Only authorized users provisioned by the Administrator can access this portal. For new user login credentials, password resets, or damaged tool clearance, contact:</p>
+            <div class="mt-3 space-y-1.5 text-xs font-medium text-slate-800">
+              <div><i class="fa-solid fa-id-badge text-blue-600 w-5"></i> <strong>Admin SPOC:</strong> Vikas (Safety & Equipment Operations)</div>
+              <div><i class="fa-solid fa-building-shield text-blue-600 w-5"></i> <strong>Department:</strong> WTG Safety / Store Control</div>
+            </div>
+          </div>
+        </div>
+        <div class="flex justify-end pt-2 border-t border-slate-100">
+          <button onclick="closeModal('helpCornerModal')" class="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl">Got It, Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 3: ADD NEW TOOL -->
+  <div id="addToolModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200">
+      <div class="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
+        <h3 class="font-bold text-base flex items-center gap-2">
+          <i class="fa-solid fa-screwdriver-wrench text-blue-400"></i> Add Equipment to Fleet
+        </h3>
+        <button onclick="closeModal('addToolModal')" class="text-slate-400 hover:text-white">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+      <form id="addToolForm" class="p-6 space-y-4">
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Serial Number <span class="text-red-500">*</span></label>
+          <input type="text" id="newToolSerial" required placeholder="e.g., A-20, E-08, AG-07"
+            class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm uppercase focus:outline-none focus:ring-2 focus:ring-blue-600" />
+        </div>
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Equipment Category <span class="text-red-500">*</span></label>
+          <input type="text" id="newToolCategory" list="categoryOptionsList" required placeholder="Select or type category"
+            class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600" />
+          <datalist id="categoryOptionsList">
+            <option value="Sanding Machine"></option>
+            <option value="Electric Grinder"></option>
+            <option value="Air Grinder"></option>
+            <option value="Hoter Gun / Heater Gun"></option>
+            <option value="Oxygen Machine"></option>
+            <option value="B.Light / Inspection Light"></option>
+            <option value="Extension Cable"></option>
+            <option value="Sizer / Cutter"></option>
+            <option value="LED Light"></option>
+          </datalist>
+        </div>
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Initial Status</label>
+          <select id="newToolStatus" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600">
+            <option value="Available">Available (OK)</option>
+            <option value="Not OK">Not OK / Under Maintenance</option>
+          </select>
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" onclick="closeModal('addToolModal')" class="px-4 py-2 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100">Cancel</button>
+          <button type="submit" class="px-5 py-2 rounded-xl text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white">Add Equipment</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- APPLICATION LOGIC & YOUR EMBEDDED FIREBASE CONFIGURATION  -->
+  <!-- ========================================================= -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getAnalytics, isSupported } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js";
+    import {
+      getFirestore,
+      doc,
+      getDoc,
+      setDoc,
+      onSnapshot
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    // Your Live Firebase Configuration (wtg-fleet-guard)
+    const firebaseConfig = {
+      apiKey: "AIzaSyCwNkKwTO2BABas5wXdvJ3Qik9HQPMy1Sw",
+      authDomain: "wtg-fleet-guard.firebaseapp.com",
+      projectId: "wtg-fleet-guard",
+      storageBucket: "wtg-fleet-guard.firebasestorage.app",
+      messagingSenderId: "778928738584",
+      appId: "1:778928738584:web:6883a0e4c9eb5b7c798e6d",
+      measurementId: "G-FQ58QM2TP4"
+    };
+
+    /********************************************************************
+     * 1. INITIAL 55-TOOL FLEET GENERATOR
+     ********************************************************************/
+    function buildInitialFleet() {
+      const tools = [];
+      const pad = (n) => String(n).padStart(2, '0');
+
+      // 1. Sanding Machine (19 Total): A-01 to A-19 (A-01 to A-13 Available, A-14 to A-19 Not OK)
+      for (let i = 1; i <= 19; i++) {
+        tools.push({
+          serial: `A-${pad(i)}`,
+          category: "Sanding Machine",
+          status: i <= 13 ? "Available" : "Not OK",
+          holder: null,
+          issuedBy: null,
+          issuedAt: null,
+          remarks: i <= 13 ? "Ready for issue" : "Marked Not OK / Under Maintenance"
+        });
+      }
+      // 2. Electric Grinder (7 Total): E-01 to E-07 (E-01 to E-06 Available, E-07 Not OK)
+      for (let i = 1; i <= 7; i++) {
+        tools.push({
+          serial: `E-${pad(i)}`,
+          category: "Electric Grinder",
+          status: i <= 6 ? "Available" : "Not OK",
+          holder: null,
+          issuedBy: null,
+          issuedAt: null,
+          remarks: i <= 6 ? "Ready for issue" : "Marked Not OK / Maintenance"
+        });
+      }
+      // 3. Air Grinder (6 Total): AG-01 to AG-06 (All Available)
+      for (let i = 1; i <= 6; i++) {
+        tools.push({
+          serial: `AG-${pad(i)}`,
+          category: "Air Grinder",
+          status: "Available",
+          holder: null,
+          issuedBy: null,
+          issuedAt: null,
+          remarks: "Ready for issue"
+        });
+      }
+      // 4. Hoter Gun / Heater Gun (2 Total): H-01 to H-02 (Under Maintenance)
+      for (let i = 1; i <= 2; i++) {
+        tools.push({
+          serial: `H-${pad(i)}`,
+          category: "Hoter Gun / Heater Gun",
+          status: "Not OK",
+          holder: null,
+          issuedBy: null,
+          issuedAt: null,
+          remarks: "Under Maintenance"
+        });
+      }
+      // 5. Oxygen Machine (5 Total): O-01 to O-05 (All Available)
+      for (let i = 1; i <= 5; i++) {
+        tools.push({
+          serial: `O-${pad(i)}`,
+          category: "Oxygen Machine",
+          status: "Available",
+          holder: null,
+          issuedBy: null,
+          issuedAt: null,
+          remarks: "Ready for issue"
+        });
+      }
+      // 6. B.Light / Inspection Light (4 Total): BL-01 to BL-04 (All Available)
+      for (let i = 1; i <= 4; i++) {
+        tools.push({
+          serial: `BL-${pad(i)}`,
+          category: "B.Light / Inspection Light",
+          status: "Available",
+          holder: null,
+          issuedBy: null,
+          issuedAt: null,
+          remarks: "Ready for issue"
+        });
+      }
+      // 7. Extension Cable (8 Total): C-01 to C-08 (All Available)
+      for (let i = 1; i <= 8; i++) {
+        tools.push({
+          serial: `C-${pad(i)}`,
+          category: "Extension Cable",
+          status: "Available",
+          holder: null,
+          issuedBy: null,
+          issuedAt: null,
+          remarks: "Ready for issue"
+        });
+      }
+      // 8. Sizer / Cutter (3 Total): S-01 to S-03 (All Available)
+      for (let i = 1; i <= 3; i++) {
+        tools.push({
+          serial: `S-${pad(i)}`,
+          category: "Sizer / Cutter",
+          status: "Available",
+          holder: null,
+          issuedBy: null,
+          issuedAt: null,
+          remarks: "Ready for issue"
+        });
+      }
+      // 9. LED Light (1 Total): L-01 (Not OK / Maintenance)
+      tools.push({
+        serial: "L-01",
+        category: "LED Light",
+        status: "Not OK",
+        holder: null,
+        issuedBy: null,
+        issuedAt: null,
+        remarks: "Not OK / Maintenance"
+      });
+
+      return tools;
+    }
+
+    function buildInitialState() {
+      const nowISO = new Date().toISOString();
+      return {
+        users: [
+          {
+            username: "Vikas",
+            password: "admin",
+            role: "Admin",
+            online: false,
+            lastSeen: nowISO
+          }
+        ],
+        tools: buildInitialFleet(),
+        transactions: [],
+        borrowerHistory: ["Ramesh Kumar", "Suresh Patel", "Mahesh Singh", "Dinesh Sharma"],
+        auditLogs: [
+          {
+            id: "AUD-" + Date.now(),
+            timestamp: nowISO,
+            type: "FLEET",
+            actor: "SYSTEM",
+            target: "ALL (55 Tools)",
+            details: "Initial equipment fleet configured with exact serial numbers and maintenance statuses."
+          }
+        ],
+        lastUpdated: nowISO
+      };
+    }
+
+    /********************************************************************
+     * 2. REAL-TIME FIREBASE FIRESTORE SYNCHRONIZATION ENGINE
+     ********************************************************************/
+    const STORAGE_KEY = "WTG_FLEET_GUARD_STATE_V1";
+    const SESSION_USER_KEY = "WTG_FLEET_GUARD_USER_V1";
+    const FIFTEEN_DAYS_MS = 15 * 24 * 60 * 60 * 1000;
+
+    let appState = buildInitialState();
+    let currentUser = null;
+    let firestoreDocRef = null;
+    let isRemoteUpdating = false;
+
+    const broadcastChannel = ("BroadcastChannel" in window) ? new BroadcastChannel("wtg_fleet_guard_sync") : null;
+
+    async function initDataLayer() {
+      // Load cached copy first for instant UI boot
+      const savedRaw = localStorage.getItem(STORAGE_KEY);
+      if (savedRaw) {
+        try {
+          const parsed = JSON.parse(savedRaw);
+          if (parsed && Array.isArray(parsed.tools) && Array.isArray(parsed.users)) {
+            appState = parsed;
+          }
+        } catch (_) {}
+      } else {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+      }
+
+      // Initialize Firebase & Firestore
+      try {
+        const app = initializeApp(firebaseConfig);
+        isSupported().then(yes => { if (yes) getAnalytics(app); }).catch(() => {});
+
+        const db = getFirestore(app);
+        firestoreDocRef = doc(db, "fleetManagementApp", "globalState");
+
+        const snap = await getDoc(firestoreDocRef);
+        if (!snap.exists()) {
+          await setDoc(firestoreDocRef, appState);
+        } else {
+          appState = snap.data();
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+        }
+
+        document.getElementById("loginSyncText").textContent = "Real-Time Cloud Sync Active";
+
+        // Live Real-Time Listener across all PCs, Tablets & Phones
+        onSnapshot(firestoreDocRef, (docSnap) => {
+          if (docSnap.exists()) {
+            isRemoteUpdating = true;
+            appState = docSnap.data();
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+            syncCurrentUserReference();
+            renderAll();
+            updateSyncTimestamp("Live Cloud Sync");
+            isRemoteUpdating = false;
+          }
+        }, (err) => {
+          console.warn("Firestore listener warning (check Firestore Rules):", err);
+          document.getElementById("loginSyncText").textContent = "Check Firestore Rules in Console";
+        });
+      } catch (err) {
+        console.error("Firebase init error:", err);
+        document.getElementById("loginSyncText").textContent = "Offline Fallback Mode";
+      }
+
+      if (broadcastChannel) {
+        broadcastChannel.onmessage = (event) => {
+          if (event.data && event.data.type === "STATE_UPDATED") {
+            appState = event.data.payload;
+            syncCurrentUserReference();
+            renderAll();
+          }
+        };
+      }
+
+      run15DayCleanup(false);
+
+      const savedUsername = sessionStorage.getItem(SESSION_USER_KEY) || localStorage.getItem(SESSION_USER_KEY);
+      if (savedUsername) {
+        const found = appState.users.find(u => u.username.toLowerCase() === savedUsername.toLowerCase());
+        if (found) loginUserSession(found, false);
+      }
+    }
+
+    async function persistState() {
+      appState.lastUpdated = new Date().toISOString();
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+
+      if (broadcastChannel) {
+        broadcastChannel.postMessage({ type: "STATE_UPDATED", payload: appState });
+      }
+
+      if (firestoreDocRef && !isRemoteUpdating) {
+        try {
+          await setDoc(firestoreDocRef, appState);
+          updateSyncTimestamp("Firestore Cloud Synced");
+        } catch (err) {
+          console.error("Firestore write error (ensure Firestore Database is created & Rules allow read/write):", err);
+          updateSyncTimestamp("Local Saved (Check Firestore Rules)");
+        }
+      } else {
+        updateSyncTimestamp("Synced");
+      }
+
+      renderAll();
+    }
+
+    function updateSyncTimestamp(label) {
+      const el = document.getElementById("footerLastSync");
+      if (el) el.textContent = `${new Date().toLocaleTimeString()} (${label})`;
+    }
+
+    function syncCurrentUserReference() {
+      if (!currentUser) return;
+      const updated = appState.users.find(u => u.username.toLowerCase() === currentUser.username.toLowerCase());
+      if (!updated) handleLogout(true);
+      else currentUser = updated;
+    }
+
+    /********************************************************************
+     * 3. 15-DAY AUTO-CLEANUP & CSV EXPORT
+     ********************************************************************/
+    window.run15DayCleanup = function(manualTrigger = false) {
+      const now = Date.now();
+      const keptTransactions = [];
+      let purgedCount = 0;
+
+      for (const tx of appState.transactions) {
+        if (tx.status === "Returned" && tx.returnedAt) {
+          const returnedTime = new Date(tx.returnedAt).getTime();
+          if (now - returnedTime > FIFTEEN_DAYS_MS) {
+            purgedCount++;
+            continue;
+          }
+        }
+        keptTransactions.push(tx);
+      }
+
+      if (purgedCount > 0) {
+        appState.transactions = keptTransactions;
+        addAuditLog(
+          "CLEANUP",
+          currentUser ? currentUser.username : "SYSTEM_AUTO",
+          `${purgedCount} Expired Records`,
+          `15-Day Auto-Cleanup purged ${purgedCount} returned transaction log(s) older than 15 days.`
+        );
+        persistState();
+        showToast(`15-Day Cleanup purged ${purgedCount} expired transaction log(s).`, "emerald");
+      } else if (manualTrigger) {
+        showToast("15-Day Cleanup verified: 0 returned logs exceed 15 days.", "blue");
+      }
+    };
+
+    window.exportExcelCSV = function() {
+      const rows = [
+        ["Serial No", "Category", "Current Status", "Kon Liya (Borrower)", "Kon Diya (Issuer)", "Issued At", "Remarks"]
+      ];
+      appState.tools.forEach(t => {
+        rows.push([
+          t.serial,
+          t.category,
+          t.status,
+          t.holder || "-",
+          t.issuedBy || "-",
+          t.issuedAt || "-",
+          (t.remarks || "-").replace(/,/g, ";")
+        ]);
+      });
+
+      const csvContent = "data:text/csv;charset=utf-8," + rows.map(r => r.join(",")).join("\n");
+      const link = document.createElement("a");
+      link.setAttribute("href", encodeURI(csvContent));
+      link.setAttribute("download", `Fleet_Inventory_${new Date().toISOString().slice(0,10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      showToast("Exported Fleet Report to Excel CSV!", "emerald");
+    };
+
+    /********************************************************************
+     * 4. AUDIT LOG & STRICT ROLE-BASED ACCESS CONTROL (RBAC)
+     ********************************************************************/
+    function addAuditLog(type, actor, target, details) {
+      appState.auditLogs.unshift({
+        id: "AUD-" + Date.now() + "-" + Math.random().toString(36).substring(2, 6).toUpperCase(),
+        timestamp: new Date().toISOString(),
+        type,
+        actor,
+        target,
+        details
+      });
+    }
+
+    document.getElementById("loginForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const usernameInput = document.getElementById("loginUsername").value.trim();
+      const passwordInput = document.getElementById("loginPassword").value;
+
+      const matchedUser = appState.users.find(
+        u => u.username.toLowerCase() === usernameInput.toLowerCase() && u.password === passwordInput
+      );
+
+      if (!matchedUser) {
+        document.getElementById("loginError").classList.remove("hidden");
+        return;
+      }
+
+      document.getElementById("loginError").classList.add("hidden");
+      document.getElementById("loginForm").reset();
+      loginUserSession(matchedUser, true);
+    });
+
+    function loginUserSession(userObj, logAudit = true) {
+      appState.users.forEach(u => {
+        if (u.username.toLowerCase() === userObj.username.toLowerCase()) {
+          u.online = true;
+          u.lastSeen = new Date().toISOString();
+          currentUser = u;
+        }
+      });
+
+      sessionStorage.setItem(SESSION_USER_KEY, currentUser.username);
+      localStorage.setItem(SESSION_USER_KEY, currentUser.username);
+
+      if (logAudit) {
+        addAuditLog("USER", currentUser.username, currentUser.username, `User signed in with ${currentUser.role} privileges.`);
+        showToast(`Welcome, ${currentUser.username} (${currentUser.role})`, "blue");
+      }
+
+      document.getElementById("loginScreen").classList.add("hidden");
+      document.getElementById("appShell").classList.remove("hidden");
+      persistState();
+    }
+
+    window.handleLogout = function(forced = false) {
+      if (currentUser) {
+        const leaving = currentUser.username;
+        appState.users.forEach(u => {
+          if (u.username.toLowerCase() === leaving.toLowerCase()) {
+            u.online = false;
+            u.lastSeen = new Date().toISOString();
+          }
+        });
+        if (!forced) addAuditLog("USER", leaving, leaving, "User signed out.");
+      }
+      currentUser = null;
+      sessionStorage.removeItem(SESSION_USER_KEY);
+      localStorage.removeItem(SESSION_USER_KEY);
+      closeProfileDropdown();
+      document.getElementById("appShell").classList.add("hidden");
+      document.getElementById("loginScreen").classList.remove("hidden");
+      persistState();
+    };
+
+    window.quickSwitchProfile = function(targetUsername) {
+      const target = appState.users.find(u => u.username.toLowerCase() === targetUsername.toLowerCase());
+      if (!target) return;
+      closeProfileDropdown();
+      if (currentUser && currentUser.username.toLowerCase() === target.username.toLowerCase()) return;
+
+      if (currentUser && currentUser.role === "Admin") {
+        loginUserSession(target, true);
+      } else {
+        const enteredPass = prompt(`Enter password for "${target.username}":`);
+        if (enteredPass === target.password) loginUserSession(target, true);
+        else if (enteredPass !== null) showToast("Incorrect password.", "red");
+      }
+    };
+
+    window.openPasswordModal = function() {
+      closeProfileDropdown();
+      document.getElementById("changePasswordForm").reset();
+      openModal("passwordModal");
+    };
+
+    document.getElementById("changePasswordForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      if (!currentUser) return;
+      const currPass = document.getElementById("currentPasswordInput").value;
+      const newPass = document.getElementById("newPasswordInput").value.trim();
+
+      if (currPass !== currentUser.password) {
+        showToast("Current password is incorrect.", "red");
+        return;
+      }
+      appState.users.forEach(u => {
+        if (u.username.toLowerCase() === currentUser.username.toLowerCase()) u.password = newPass;
+      });
+      addAuditLog("USER", currentUser.username, currentUser.username, "Changed account password.");
+      closeModal("passwordModal");
+      persistState();
+      showToast("Password updated!", "emerald");
+    });
+
+    /********************************************************************
+     * 5. FLEET & ISSUE/RETURN OPERATIONS
+     ********************************************************************/
+    document.getElementById("addToolForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      if (!currentUser || currentUser.role !== "Admin") return;
+
+      const serial = document.getElementById("newToolSerial").value.trim().toUpperCase();
+      const category = document.getElementById("newToolCategory").value.trim();
+      const status = document.getElementById("newToolStatus").value;
+
+      if (appState.tools.some(t => t.serial.toUpperCase() === serial)) {
+        showToast(`Serial "${serial}" already exists!`, "red");
+        return;
+      }
+
+      appState.tools.push({
+        serial,
+        category,
+        status,
+        holder: null,
+        issuedBy: null,
+        issuedAt: null,
+        remarks: status === "Available" ? "Ready for issue" : "Marked Not OK / Maintenance"
+      });
+
+      addAuditLog("FLEET", currentUser.username, serial, `Added new ${category} (${serial}) [${status}].`);
+      document.getElementById("addToolForm").reset();
+      closeModal("addToolModal");
+      persistState();
+      showToast(`Added ${serial} to fleet.`, "emerald");
+    });
+
+    window.toggleToolDamaged = function(serial) {
+      if (!currentUser) return;
+      const tool = appState.tools.find(t => t.serial === serial);
+      if (!tool || tool.status === "In-Use") {
+        showToast("Return the tool before changing maintenance state.", "amber");
+        return;
+      }
+
+      const prev = tool.status;
+      tool.status = tool.status === "Not OK" ? "Available" : "Not OK";
+      tool.remarks = tool.status === "Not OK"
+        ? `Flagged Not OK / Damaged by ${currentUser.username}`
+        : `Restored to Available by ${currentUser.username}`;
+
+      addAuditLog("STATUS", currentUser.username, serial, `Toggled ${tool.category} (${serial}) from "${prev}" to "${tool.status}".`);
+      persistState();
+      showToast(`${serial} marked as ${tool.status}.`, tool.status === "Available" ? "emerald" : "amber");
+    };
+
+    window.removeToolFromFleet = function(serial) {
+      if (!currentUser || currentUser.role !== "Admin") return;
+      const tool = appState.tools.find(t => t.serial === serial);
+      if (!tool || tool.status === "In-Use") {
+        showToast("Cannot remove a tool that is currently In-Use.", "red");
+        return;
+      }
+      if (!confirm(`Permanently remove ${tool.category} (${serial})?`)) return;
+
+      appState.tools = appState.tools.filter(t => t.serial !== serial);
+      addAuditLog("FLEET", currentUser.username, serial, `Removed ${tool.category} (${serial}) from fleet.`);
+      persistState();
+      showToast(`Removed ${serial}.`, "red");
+    };
+
+    window.jumpToIssueTool = function(serial) {
+      switchTab("issueReturnTab");
+      const sel = document.getElementById("issueToolSelect");
+      if (sel) {
+        sel.value = serial;
+        document.getElementById("issueKonLiya").focus();
+      }
+    };
+
+    document.getElementById("issueToolForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      if (!currentUser) return;
+
+      const serial = document.getElementById("issueToolSelect").value;
+      const konDiya = currentUser.username;
+      const konLiya = document.getElementById("issueKonLiya").value.trim();
+      const remarks = document.getElementById("issueRemarks").value.trim();
+
+      const tool = appState.tools.find(t => t.serial === serial);
+      if (!tool || tool.status !== "Available") {
+        showToast("Selected tool is not available.", "red");
+        return;
+      }
+
+      const nowISO = new Date().toISOString();
+      tool.status = "In-Use";
+      tool.holder = konLiya;
+      tool.issuedBy = konDiya;
+      tool.issuedAt = nowISO;
+      tool.remarks = remarks || `Issued to ${konLiya}`;
+
+      if (!appState.borrowerHistory.some(b => b.toLowerCase() === konLiya.toLowerCase())) {
+        appState.borrowerHistory.unshift(konLiya);
+      }
+
+      appState.transactions.unshift({
+        id: "TX-" + Date.now(),
+        serial: tool.serial,
+        category: tool.category,
+        konDiya,
+        konLiya,
+        remarks: remarks || "-",
+        issuedAt: nowISO,
+        returnedAt: null,
+        returnedTo: null,
+        status: "In-Use"
+      });
+
+      addAuditLog("ISSUE", konDiya, tool.serial, `Issued ${tool.category} (${tool.serial}) — Kon Diya: ${konDiya} | Kon Liya: ${konLiya}`);
+      document.getElementById("issueKonLiya").value = "";
+      document.getElementById("issueRemarks").value = "";
+      persistState();
+      showToast(`Issued ${tool.serial} to ${konLiya}.`, "emerald");
+    });
+
+    window.returnIssuedTool = function(serial, markDamaged = false) {
+      if (!currentUser) return;
+      const tool = appState.tools.find(t => t.serial === serial);
+      if (!tool || tool.status !== "In-Use") return;
+
+      const prevBorrower = tool.holder;
+      const nowISO = new Date().toISOString();
+
+      tool.status = markDamaged ? "Not OK" : "Available";
+      tool.holder = null;
+      tool.issuedBy = null;
+      tool.issuedAt = null;
+      tool.remarks = markDamaged
+        ? `Returned Damaged / Not OK from ${prevBorrower}`
+        : `Returned by ${prevBorrower} (Verified by ${currentUser.username})`;
+
+      const openTx = appState.transactions.find(tx => tx.serial === serial && tx.status === "In-Use");
+      if (openTx) {
+        openTx.status = "Returned";
+        openTx.returnedAt = nowISO;
+        openTx.returnedTo = currentUser.username;
+      }
+
+      addAuditLog("RETURN", currentUser.username, serial, `Returned ${tool.category} (${serial}) from ${prevBorrower} -> ${tool.status}.`);
+      persistState();
+      showToast(`${serial} returned (${tool.status}).`, markDamaged ? "amber" : "emerald");
+    };
+
+    window.fillBorrowerInput = function(name) {
+      const inp = document.getElementById("issueKonLiya");
+      if (inp) { inp.value = name; inp.focus(); }
+    };
+
+    /********************************************************************
+     * 6. USER MANAGEMENT (ADMIN)
+     ********************************************************************/
+    document.getElementById("addUserForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      if (!currentUser || currentUser.role !== "Admin") return;
+
+      const username = document.getElementById("newUsername").value.trim();
+      const password = document.getElementById("newUserPassword").value.trim();
+      const role = document.getElementById("newUserRole").value;
+
+      if (appState.users.some(u => u.username.toLowerCase() === username.toLowerCase())) {
+        showToast(`User "${username}" already exists!`, "red");
+        return;
+      }
+
+      appState.users.push({ username, password, role, online: false, lastSeen: new Date().toISOString() });
+      addAuditLog("USER", currentUser.username, username, `Authorized new user "${username}" (${role}).`);
+      document.getElementById("addUserForm").reset();
+      persistState();
+      showToast(`User "${username}" granted access!`, "emerald");
+    });
+
+    window.toggleUserRole = function(username) {
+      if (!currentUser || currentUser.role !== "Admin") return;
+      const target = appState.users.find(u => u.username === username);
+      if (!target || target.username.toLowerCase() === "vikas") return;
+
+      target.role = target.role === "Admin" ? "User" : "Admin";
+      addAuditLog("USER", currentUser.username, username, `Updated role of "${username}" to ${target.role}.`);
+      persistState();
+      showToast(`${username} is now ${target.role}.`, "blue");
+    };
+
+    window.adminResetUserPassword = function(username) {
+      if (!currentUser || currentUser.role !== "Admin") return;
+      const target = appState.users.find(u => u.username === username);
+      if (!target) return;
+      const newPass = prompt(`Enter new password for "${username}":`, "1234");
+      if (!newPass || !newPass.trim()) return;
+      target.password = newPass.trim();
+      addAuditLog("USER", currentUser.username, username, `Reset password for "${username}".`);
+      persistState();
+      showToast(`Password reset for ${username}.`, "emerald");
+    };
+
+    window.adminDeleteUser = function(username) {
+      if (!currentUser || currentUser.role !== "Admin") return;
+      if (username.toLowerCase() === "vikas" || username.toLowerCase() === currentUser.username.toLowerCase()) return;
+      if (!confirm(`Revoke access and delete user "${username}"?`)) return;
+
+      appState.users = appState.users.filter(u => u.username !== username);
+      addAuditLog("USER", currentUser.username, username, `Revoked access for user "${username}".`);
+      persistState();
+      showToast(`Removed ${username}.`, "red");
+    };
+
+    /********************************************************************
+     * 7. UI & REAL-TIME VISUALIZATION RENDERING
+     ********************************************************************/
+    function renderAll() {
+      if (!currentUser) return;
+      renderHeaderAndKPIs();
+      renderFleetTable();
+      renderIssueReturnTab();
+      renderUsersTab();
+      renderAuditLogs();
+    }
+
+    function renderHeaderAndKPIs() {
+      document.getElementById("headerUserAvatar").textContent = currentUser.username.charAt(0).toUpperCase();
+      document.getElementById("headerUserName").textContent = currentUser.username;
+      document.getElementById("headerUserRole").textContent = currentUser.role;
+      document.getElementById("dropdownFullUser").textContent = currentUser.username;
+      document.getElementById("dropdownUserRole").textContent = `Role: ${currentUser.role}`;
+      document.getElementById("headerOnlineCount").textContent = appState.users.filter(u => u.online).length || 1;
+
+      document.getElementById("quickSwitchList").innerHTML = appState.users.map(u => {
+        const isCurrent = u.username.toLowerCase() === currentUser.username.toLowerCase();
+        return `
+          <button onclick="quickSwitchProfile('${escapeHtml(u.username)}')"
+            class="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs ${isCurrent ? 'bg-blue-50 text-blue-700 font-bold' : 'hover:bg-slate-100 text-slate-700'} transition">
+            <span class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full ${u.online ? 'bg-emerald-500' : 'bg-slate-300'}"></span>
+              <span>${escapeHtml(u.username)}</span>
+            </span>
+            <span class="text-[10px] px-1.5 py-0.5 rounded ${u.role === 'Admin' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600'}">${u.role}</span>
+          </button>
+        `;
+      }).join("");
+
+      const total = appState.tools.length || 1;
+      const available = appState.tools.filter(t => t.status === "Available").length;
+      const inUse = appState.tools.filter(t => t.status === "In-Use").length;
+      const damaged = appState.tools.filter(t => t.status === "Not OK").length;
+
+      document.getElementById("kpiTotalTools").textContent = appState.tools.length;
+      document.getElementById("kpiAvailableTools").textContent = available;
+      document.getElementById("kpiInUseTools").textContent = inUse;
+      document.getElementById("kpiDamagedTools").textContent = damaged;
+      document.getElementById("activeIssueCounterBadge").textContent = inUse;
+
+      // Update Real-Time Visualization Progress Bar
+      const availPct = ((available / total) * 100).toFixed(1);
+      const inUsePct = ((inUse / total) * 100).toFixed(1);
+      const dmgPct = ((damaged / total) * 100).toFixed(1);
+      const operationalPct = Math.round(((available + inUse) / total) * 100);
+
+      document.getElementById("barAvailable").style.width = `${availPct}%`;
+      document.getElementById("barInUse").style.width = `${inUsePct}%`;
+      document.getElementById("barDamaged").style.width = `${dmgPct}%`;
+      document.getElementById("healthPercentLabel").textContent = `${operationalPct}% Operational (${available} Free, ${inUse} Active, ${damaged} Maint.)`;
+
+      const adminCtrl = document.getElementById("adminFleetControls");
+      if (currentUser.role === "Admin") adminCtrl.classList.remove("hidden");
+      else adminCtrl.classList.add("hidden");
+    }
+
+    window.renderFleetTable = function() {
+      if (!currentUser) return;
+      const search = (document.getElementById("fleetSearchInput")?.value || "").trim().toLowerCase();
+      const catFilter = document.getElementById("fleetCategoryFilter")?.value || "ALL";
+      const statusFilter = document.getElementById("fleetStatusFilter")?.value || "ALL";
+
+      const categories = [
+        "Sanding Machine", "Electric Grinder", "Air Grinder", "Hoter Gun / Heater Gun",
+        "Oxygen Machine", "B.Light / Inspection Light", "Extension Cable", "Sizer / Cutter", "LED Light"
+      ];
+      appState.tools.forEach(t => { if (!categories.includes(t.category)) categories.push(t.category); });
+
+      document.getElementById("categorySummaryGrid").innerHTML = categories.map(cat => {
+        const items = appState.tools.filter(t => t.category === cat);
+        const avail = items.filter(t => t.status === "Available").length;
+        const inUse = items.filter(t => t.status === "In-Use").length;
+        const notOk = items.filter(t => t.status === "Not OK").length;
+        const isActive = catFilter === cat;
+        return `
+          <div onclick="document.getElementById('fleetCategoryFilter').value='${isActive ? 'ALL' : escapeHtml(cat)}'; renderFleetTable();"
+            class="cursor-pointer p-3 rounded-xl border transition ${isActive ? 'bg-blue-50 border-blue-500' : 'bg-white border-slate-200 hover:border-slate-300'}">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-slate-800 truncate">${escapeHtml(cat)}</span>
+              <span class="text-xs font-extrabold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md">${items.length}</span>
+            </div>
+            <div class="flex items-center gap-2 mt-2 text-[11px] font-medium">
+              <span class="text-emerald-700">${avail} OK</span> •
+              <span class="text-amber-700">${inUse} Use</span> •
+              <span class="text-red-600">${notOk} Maint</span>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      const filtered = appState.tools.filter(t => {
+        const matchesSearch =
+          t.serial.toLowerCase().includes(search) ||
+          t.category.toLowerCase().includes(search) ||
+          (t.holder && t.holder.toLowerCase().includes(search)) ||
+          (t.remarks && t.remarks.toLowerCase().includes(search));
+        const matchesCat = catFilter === "ALL" || t.category === catFilter;
+        const matchesStatus = statusFilter === "ALL" || t.status === statusFilter;
+        return matchesSearch && matchesCat && matchesStatus;
+      });
+
+      document.getElementById("fleetShowingCount").textContent = `(Showing ${filtered.length} of ${appState.tools.length} items)`;
+      const isAdmin = currentUser.role === "Admin";
+      const tbody = document.getElementById("fleetTableBody");
+
+      tbody.innerHTML = filtered.map(tool => {
+        const isDamaged = tool.status === "Not OK";
+        const isInUse = tool.status === "In-Use";
+        const badge = tool.status === "Available"
+          ? `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">Available</span>`
+          : isInUse
+            ? `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">In-Use</span>`
+            : `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-200">Not OK / Maint.</span>`;
+
+        return `
+          <tr class="hover:bg-slate-50/80 transition">
+            <td class="py-3 px-4 font-mono font-bold text-slate-900">${escapeHtml(tool.serial)}</td>
+            <td class="py-3 px-4 font-medium text-slate-800">${escapeHtml(tool.category)}</td>
+            <td class="py-3 px-4">${badge}</td>
+            <td class="py-3 px-4 text-xs text-slate-600">
+              ${isInUse
+                ? `<div><strong>Kon Liya:</strong> ${escapeHtml(tool.holder)}</div><div class="text-[11px] text-slate-400">Kon Diya: ${escapeHtml(tool.issuedBy)} • ${formatShortDate(tool.issuedAt)}</div>`
+                : escapeHtml(tool.remarks || "-")}
+            </td>
+            <td class="py-3 px-4 text-center">
+              <button onclick="toggleToolDamaged('${escapeHtml(tool.serial)}')" ${isInUse ? 'disabled' : ''}
+                class="px-3 py-1 rounded-lg text-xs font-semibold border transition ${
+                  isInUse ? 'opacity-40 cursor-not-allowed bg-slate-100' : isDamaged ? 'bg-red-600 text-white border-red-600' : 'bg-slate-100 text-slate-600 hover:bg-red-50 hover:text-red-600'
+                }">
+                ${isDamaged ? 'Damaged / Not OK' : 'Mark Damaged'}
+              </button>
+            </td>
+            <td class="py-3 px-4 text-right whitespace-nowrap space-x-1">
+              ${tool.status === "Available" ? `<button onclick="jumpToIssueTool('${escapeHtml(tool.serial)}')" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">Issue</button>` : ""}
+              ${isInUse ? `<button onclick="returnIssuedTool('${escapeHtml(tool.serial)}', false)" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">Return</button>` : ""}
+              ${isAdmin ? `<button onclick="removeToolFromFleet('${escapeHtml(tool.serial)}')" class="p-1.5 text-slate-400 hover:text-red-600"><i class="fa-solid fa-trash-can"></i></button>` : ""}
+            </td>
+          </tr>
+        `;
+      }).join("");
+    };
+
+    function renderIssueReturnTab() {
+      document.getElementById("issueKonDiya").value = currentUser.username;
+      const selectEl = document.getElementById("issueToolSelect");
+      const currentVal = selectEl.value;
+      const avail = appState.tools.filter(t => t.status === "Available");
+
+      selectEl.innerHTML = `<option value="">-- Choose an Available Tool (${avail.length} Ready) --</option>` +
+        avail.map(t => `<option value="${escapeHtml(t.serial)}">[${escapeHtml(t.serial)}] ${escapeHtml(t.category)}</option>`).join("");
+      if (avail.some(t => t.serial === currentVal)) selectEl.value = currentVal;
+
+      document.getElementById("borrowerHistoryList").innerHTML = appState.borrowerHistory.map(n => `<option value="${escapeHtml(n)}"></option>`).join("");
+      document.getElementById("borrowerQuickChips").innerHTML = appState.borrowerHistory.slice(0, 6).map(n => `
+        <button type="button" onclick="fillBorrowerInput('${escapeHtml(n)}')" class="text-[11px] px-2 py-0.5 rounded bg-slate-100 hover:bg-blue-50 text-slate-600 border">${escapeHtml(n)}</button>
+      `).join("");
+
+      const inUse = appState.tools.filter(t => t.status === "In-Use");
+      document.getElementById("inUseBadgeCount").textContent = `${inUse.length} Active`;
+
+      document.getElementById("activeIssuesTableBody").innerHTML = inUse.length === 0
+        ? `<tr><td colspan="5" class="py-8 text-center text-slate-400 text-xs">No tools currently issued out.</td></tr>`
+        : inUse.map(t => `
+          <tr>
+            <td class="py-3 px-4"><div class="font-mono font-bold">${escapeHtml(t.serial)}</div><div class="text-xs text-slate-500">${escapeHtml(t.category)}</div></td>
+            <td class="py-3 px-4 font-semibold">${escapeHtml(t.holder)}</td>
+            <td class="py-3 px-4 text-xs">${escapeHtml(t.issuedBy)}</td>
+            <td class="py-3 px-4 text-xs text-slate-500">${formatShortDate(t.issuedAt)}</td>
+            <td class="py-3 px-4 text-right space-x-1">
+              <button onclick="returnIssuedTool('${escapeHtml(t.serial)}', false)" class="px-3 py-1 rounded-lg text-xs font-semibold bg-emerald-600 text-white">Return OK</button>
+              <button onclick="returnIssuedTool('${escapeHtml(t.serial)}', true)" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-red-50 text-red-700 border border-red-200">Damaged</button>
+            </td>
+          </tr>
+        `).join("");
+
+      const returned = appState.transactions.filter(tx => tx.status === "Returned");
+      const now = Date.now();
+      document.getElementById("returnedHistoryTableBody").innerHTML = returned.length === 0
+        ? `<tr><td colspan="5" class="py-6 text-center text-slate-400 text-xs">No returned records in the last 15 days.</td></tr>`
+        : returned.map(tx => {
+          const daysLeft = Math.max(0, Math.ceil((FIFTEEN_DAYS_MS - (now - new Date(tx.returnedAt).getTime())) / 86400000));
+          return `
+            <tr>
+              <td class="py-2.5 px-4 font-mono font-bold">${escapeHtml(tx.serial)} <span class="font-sans font-normal text-slate-500">(${escapeHtml(tx.category)})</span></td>
+              <td class="py-2.5 px-4">${escapeHtml(tx.konLiya)}</td>
+              <td class="py-2.5 px-4">${escapeHtml(tx.konDiya)}</td>
+              <td class="py-2.5 px-4 text-slate-500">${formatShortDate(tx.returnedAt)}</td>
+              <td class="py-2.5 px-4"><span class="px-2 py-0.5 rounded bg-slate-100 text-[11px] font-semibold">${daysLeft}d left</span></td>
+            </tr>
+          `;
+        }).join("");
+    }
+
+    function renderUsersTab() {
+      const isAdmin = currentUser.role === "Admin";
+      document.getElementById("addUserForm").classList.toggle("hidden", !isAdmin);
+      document.getElementById("nonAdminUserNotice").classList.toggle("hidden", isAdmin);
+      document.getElementById("totalUsersCountBadge").textContent = `${appState.users.length} Authorized`;
+
+      document.getElementById("usersTableBody").innerHTML = appState.users.map(u => {
+        const isPrimary = u.username.toLowerCase() === "vikas";
+        const isSelf = u.username.toLowerCase() === currentUser.username.toLowerCase();
+        return `
+          <tr>
+            <td class="py-3 px-4 font-bold">${escapeHtml(u.username)} ${isSelf ? '<span class="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded ml-1">You</span>' : ''}</td>
+            <td class="py-3 px-4"><span class="px-2.5 py-1 rounded-full text-xs font-semibold ${u.role === 'Admin' ? 'bg-indigo-50 text-indigo-700' : 'bg-slate-100 text-slate-700'}">${u.role}</span></td>
+            <td class="py-3 px-4 text-xs">${u.online ? '<span class="text-emerald-700 font-semibold">● Online</span>' : '<span class="text-slate-400">● Offline</span>'}</td>
+            <td class="py-3 px-4 text-xs text-slate-500">${formatShortDate(u.lastSeen)}</td>
+            <td class="py-3 px-4 text-right space-x-1">
+              ${isAdmin ? `
+                <button onclick="toggleUserRole('${escapeHtml(u.username)}')" ${isPrimary ? 'disabled' : ''} class="px-2.5 py-1 rounded text-xs font-semibold bg-indigo-50 text-indigo-700 ${isPrimary ? 'opacity-40' : ''}">Role</button>
+                <button onclick="adminResetUserPassword('${escapeHtml(u.username)}')" class="px-2.5 py-1 rounded text-xs font-semibold bg-amber-50 text-amber-700">Reset Pass</button>
+                ${!isPrimary && !isSelf ? `<button onclick="adminDeleteUser('${escapeHtml(u.username)}')" class="p-1 text-red-600" title="Revoke User Access"><i class="fa-solid fa-trash-can"></i></button>` : ''}
+              ` : '<span class="text-xs text-slate-400">View Only</span>'}
+            </td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    window.renderAuditLogs = function() {
+      const search = (document.getElementById("auditSearchInput")?.value || "").trim().toLowerCase();
+      const typeFilter = document.getElementById("auditTypeFilter")?.value || "ALL";
+      const filtered = appState.auditLogs.filter(l =>
+        (typeFilter === "ALL" || l.type === typeFilter) &&
+        (l.actor.toLowerCase().includes(search) || l.target.toLowerCase().includes(search) || l.details.toLowerCase().includes(search))
+      );
+      document.getElementById("auditCountBadge").textContent = `${filtered.length} Events`;
+      document.getElementById("auditTableBody").innerHTML = filtered.map(l => `
+        <tr>
+          <td class="py-2.5 px-4 font-mono text-xs text-slate-500">${formatShortDate(l.timestamp)}</td>
+          <td class="py-2.5 px-4"><span class="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-100">${escapeHtml(l.type)}</span></td>
+          <td class="py-2.5 px-4 font-semibold">${escapeHtml(l.actor)}</td>
+          <td class="py-2.5 px-4 font-mono font-bold">${escapeHtml(l.target)}</td>
+          <td class="py-2.5 px-4 text-slate-600">${escapeHtml(l.details)}</td>
+        </tr>
+      `).join("");
+    };
+
+    /********************************************************************
+     * 8. UI HELPERS
+     ********************************************************************/
+    window.switchTab = function(tabId) {
+      document.querySelectorAll(".tab-pane").forEach(el => el.classList.add("hidden"));
+      document.getElementById(tabId)?.classList.remove("hidden");
+      document.querySelectorAll(".tab-btn").forEach(btn => {
+        btn.classList.remove("bg-blue-600", "text-white", "shadow-sm");
+        btn.classList.add("text-slate-600", "hover:bg-slate-100");
+      });
+      const activeBtn = document.getElementById(`tabBtn-${tabId}`);
+      if (activeBtn) {
+        activeBtn.classList.remove("text-slate-600", "hover:bg-slate-100");
+        activeBtn.classList.add("bg-blue-600", "text-white", "shadow-sm");
+      }
+      renderAll();
+    };
+
+    window.openModal = (id) => document.getElementById(id)?.classList.remove("hidden");
+    window.closeModal = (id) => document.getElementById(id)?.classList.add("hidden");
+    window.toggleProfileDropdown = () => document.getElementById("profileDropdownMenu")?.classList.toggle("hidden");
+    window.closeProfileDropdown = () => document.getElementById("profileDropdownMenu")?.classList.add("hidden");
+
+    document.addEventListener("click", (e) => {
+      const container = document.getElementById("profileDropdownContainer");
+      if (container && !container.contains(e.target)) closeProfileDropdown();
+    });
+
+    window.togglePasswordVisibility = function(inputId, iconId) {
+      const inp = document.getElementById(inputId);
+      const icon = document.getElementById(iconId);
+      inp.type = inp.type === "password" ? "text" : "password";
+      icon.classList.toggle("fa-eye");
+      icon.classList.toggle("fa-eye-slash");
+    };
+
+    function showToast(message, color = "blue") {
+      const container = document.getElementById("toastContainer");
+      const toast = document.createElement("div");
+      toast.className = `pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg border-l-4 text-xs sm:text-sm font-medium bg-slate-900 text-white border-${color}-500`;
+      toast.innerHTML = `<span>${escapeHtml(message)}</span>`;
+      container.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
+    }
+
+    function formatShortDate(isoStr) {
+      if (!isoStr) return "-";
+      const d = new Date(isoStr);
+      return d.toLocaleString([], { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+    }
+
+    function escapeHtml(str) {
+      return String(str ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    initDataLayer();
+  </script>
+</body>
+</html>
